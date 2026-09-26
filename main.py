@@ -1,11 +1,14 @@
 from mapa import Mapa
+from agente import Agente
+from simulacion import Simulacion
+from algoritmos.bfs import bfs
 
 
 grilla = [
     "##########",
     "#........#",
     "#..###...#",
-    "#....F...#",
+    "#........#",
     "#......S.#",
     "##########"
 ]
@@ -13,14 +16,44 @@ grilla = [
 
 mapa = Mapa(grilla)
 
-print("Mapa inicial:")
-mapa.mostrar()
 
-print("\nSalida:")
-print(mapa.salida)
+agentes = [
+    Agente(1, (1, 1)),
+    Agente(2, (1, 2)),
+    Agente(3, (1, 3))
+]
 
-print("\nFuego:")
-print(mapa.fuego)
+for agente in agentes:
+    ruta = bfs(
+        mapa,
+        agente.posicion,
+        mapa.salida
+    )
 
-print("\nVecinos desde (1, 1):")
-print(mapa.obtener_vecinos((1, 1)))
+    print(f"Agente {agente.id}: {ruta}")
+
+
+simulacion = Simulacion(
+    mapa,
+    agentes,
+    bfs
+)
+
+
+for i in range(10):
+    simulacion.ejecutar_turno()
+
+    print(f"Turno {simulacion.turno}")
+
+    for agente in agentes:
+        print(
+            f"Agente {agente.id}: "
+            f"posicion={agente.posicion}, "
+            f"evacuado={agente.evacuado}, "
+            f"vivo={agente.vivo}"
+        )
+
+    print()
+
+    if simulacion.terminada():
+        break
