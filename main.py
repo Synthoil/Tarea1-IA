@@ -1,59 +1,50 @@
+from collections import Counter
+
 from mapa import Mapa
-from agente import Agente
-from simulacion import Simulacion
 from algoritmos.bfs import bfs
+from algoritmos.ucs import ucs
 
 
 grilla = [
-    "##########",
-    "#........#",
-    "#..###...#",
-    "#........#",
-    "#......S.#",
-    "##########"
+    "###########",
+    "#........S#",
+    "#.#######.#",
+    "#.........#",
+    "###########"
 ]
-
 
 mapa = Mapa(grilla)
 
+inicio = (1, 1)
 
-agentes = [
-    Agente(1, (1, 1)),
-    Agente(2, (1, 2)),
-    Agente(3, (1, 3))
-]
-
-for agente in agentes:
-    ruta = bfs(
-        mapa,
-        agente.posicion,
-        mapa.salida
-    )
-
-    print(f"Agente {agente.id}: {ruta}")
+ocupacion = Counter({
+    (1, 2): 3,
+    (1, 3): 3,
+    (1, 4): 3,
+    (1, 5): 3,
+    (1, 6): 3,
+    (1, 7): 3,
+    (1, 8): 3
+})
 
 
-simulacion = Simulacion(
+ruta_bfs = bfs(
     mapa,
-    agentes,
-    bfs
+    inicio,
+    mapa.salida,
+    ocupacion
+)
+
+ruta_ucs = ucs(
+    mapa,
+    inicio,
+    mapa.salida,
+    ocupacion
 )
 
 
-for i in range(10):
-    simulacion.ejecutar_turno()
+print("Ruta BFS:")
+print(ruta_bfs)
 
-    print(f"Turno {simulacion.turno}")
-
-    for agente in agentes:
-        print(
-            f"Agente {agente.id}: "
-            f"posicion={agente.posicion}, "
-            f"evacuado={agente.evacuado}, "
-            f"vivo={agente.vivo}"
-        )
-
-    print()
-
-    if simulacion.terminada():
-        break
+print("\nRuta UCS:")
+print(ruta_ucs)

@@ -71,6 +71,8 @@ class Simulacion:
         
         if nueva_ruta is not None:
             agente.asignar_ruta(nueva_ruta)
+        else:
+            agente.ruta = []
             
     
     def planificar_movimientos(self):
