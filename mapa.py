@@ -72,6 +72,15 @@ class Mapa:
         return vecinos
     
     
+    def costo_congestion(self, posicion, ocupacion):
+        if ocupacion is None:
+            return 1
+        
+        cantidad = ocupacion.get(posicion, 0)
+        
+        return 1 + cantidad ** 2
+    
+    
     def propagar_fuego(self):
         nuevo_fuego = set()
         

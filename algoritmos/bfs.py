@@ -13,7 +13,14 @@ def bfs(mapa, inicio, objetivo, ocupacion=None):
         if actual == objetivo:
             return reconstruir_ruta(padres, objetivo)
         
-        for vecino in mapa.obtener_vecinos(actual):
+        vecinos = mapa.obtener_vecinos(actual)
+        
+        vecinos.sort(
+            key=lambda posicion:
+                mapa.costo_congestion(posicion, ocupacion)
+        )
+        
+        for vecino in vecinos:
             if vecino not in padres:
                 padres[vecino] = actual
                 cola.append(vecino)

@@ -1,13 +1,5 @@
 import heapq
 
-def costo_celda(posicion, ocupacion):
-    if ocupacion is None:
-        return 1
-    
-    cantidad = ocupacion.get(posicion, 0)
-    
-    return 1 + cantidad ** 2
-
 
 def ucs(mapa, inicio, objetivo, ocupacion=None):
     frontera = []
@@ -35,7 +27,7 @@ def ucs(mapa, inicio, objetivo, ocupacion=None):
             
             nuevo_costo = (
                 costo_actual
-                + costo_celda(vecino, ocupacion)
+                + mapa.costo_congestion(vecino, ocupacion)
             )
             
             if (
