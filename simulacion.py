@@ -11,11 +11,13 @@ from config import (
 
 class Simulacion:
     
-    def __init__(self, mapa, agentes, planificador=None):
+    def __init__(self, mapa, agentes, planificador=None, rng=None):
         self.mapa = mapa
         self.agentes = agentes
         
         self.planificador = planificador
+        
+        self.rng = rng if rng is not None else random
         
         self.turno = 0
         
@@ -98,7 +100,7 @@ class Simulacion:
             if destino == self.mapa.salida:
                 candidatos.append(agente)
                 
-        random.shuffle(candidatos)
+        self.rng.shuffle(candidatos)
         
         pueden_salir = candidatos[:CAPACIDAD_SALIDA]
         
@@ -118,7 +120,7 @@ class Simulacion:
         ocupacion = self.obtener_ocupacion()
         
         agentes = self.agentes_activos()
-        random.shuffle(agentes)
+        self.rng.shuffle(agentes)
         
         for agente in agentes:
             

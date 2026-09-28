@@ -2,7 +2,7 @@ import random
 from config import PROB_PROPAGACION
 
 class Mapa:
-    def __init__(self, grilla):
+    def __init__(self, grilla, rng=None):
         self.grilla = [list(fila) for fila in grilla]
         
         self.filas = len(self.grilla)
@@ -10,6 +10,8 @@ class Mapa:
         
         self.salida = None 
         self.fuego = set()
+        
+        self.rng = rng if rng is not None else random
         
         self.buscar_elementos()
         
@@ -108,7 +110,7 @@ class Mapa:
                     continue
                 if vecino in self.fuego:
                     continue
-                if random.random() < PROB_PROPAGACION:
+                if self.rng.random() < PROB_PROPAGACION:
                     nuevo_fuego.add(vecino)
         
         for fila, columna in nuevo_fuego:
