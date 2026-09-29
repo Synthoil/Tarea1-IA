@@ -1,5 +1,4 @@
 import random
-import statistics
 
 from mapa import Mapa
 from agente import Agente
@@ -11,45 +10,23 @@ from algoritmos.bfs import bfs
 from algoritmos.ucs import ucs
 from algoritmos.greedy import greedy
 from algoritmos.astar import astar
-
-
-ITERACIONES = 20
+from algoritmos.genetico import genetico
 
 
 ALGORITMOS = {
-    "BFS": bfs,
-    "UCS": ucs,
-    "Greedy": greedy,
-    "A*": astar
+    "1": ("BFS", bfs),
+    "2": ("UCS", ucs),
+    "3": ("Greedy", greedy),
+    "4": ("A*", astar),
+    "5": ("Genético", genetico)
 }
 
 
-ESCENARIOS_PRUEBA = [
-    {
-        "escenario": MAPA_1,
-        "fuegos_extra": [
-            (9, 25),
-            (13, 5),
-            (18, 25)
-        ]
-    },
-    {
-        "escenario": MAPA_2,
-        "fuegos_extra": [
-            (3, 25),
-            (9, 2),
-            (18, 25)
-        ]
-    },
-    {
-        "escenario": MAPA_3,
-        "fuegos_extra": [
-            (3, 25),
-            (10, 2),
-            (18, 25)
-        ]
-    }
-]
+ESCENARIOS = {
+    "1": MAPA_1,
+    "2": MAPA_2,
+    "3": MAPA_3
+}
 
 
 def crear_agentes(posiciones):
@@ -59,100 +36,213 @@ def crear_agentes(posiciones):
     ]
 
 
-def agregar_fuegos(grilla, posiciones):
-    nueva_grilla = [
-        list(fila)
-        for fila in grilla
-    ]
+def generar_posiciones_agentes(
+    escenario,
+    rng_posiciones
+):
+    grilla = escenario["grilla"]
+    zona = escenario["zona_inicio"]
 
-    for fila, columna in posiciones:
-        if nueva_grilla[fila][columna] == ".":
-            nueva_grilla[fila][columna] = "F"
+    posiciones_validas = []
 
-    return [
-        "".join(fila)
-        for fila in nueva_grilla
-    ]
+    for fila in range(
+        zona["fila_min"],
+        zona["fila_max"] + 1
+    ):
+        for columna in range(
+            zona["columna_min"],
+            zona["columna_max"] + 1
+        ):
+            if grilla[fila][columna] == ".":
+                posiciones_validas.append(
+                    (fila, columna)
+                )
+
+    cantidad = escenario["cantidad_agentes"]
+
+    return rng_posiciones.sample(
+        posiciones_validas,
+        cantidad
+    )
 
 
 def ejecutar_simulacion(
     escenario,
     algoritmo,
-    semilla,
-    fuegos_extra
+    semilla
 ):
-    rng_fuego = random.Random(semilla)
+    rng_fuego = random.Random(
+        semilla
+    )
+
+    rng_posiciones = random.Random(
+        semilla + 50000
+    )
+
     rng_movimientos = random.Random(
         semilla + 100000
     )
 
-    grilla = agregar_fuegos(
-        escenario["grilla"],
-        fuegos_extra
+    rng_genetico = random.Random(
+        semilla + 150000
     )
 
     mapa = Mapa(
-        grilla,
+        escenario["grilla"],
         rng=rng_fuego
     )
 
-    agentes = crear_agentes(
-        escenario["agentes"]
+    posiciones = generar_posiciones_agentes(
+        escenario,
+        rng_posiciones
     )
+
+    agentes = crear_agentes(
+        posiciones
+    )
+
+    if algoritmo is genetico:
+        rng_algoritmo = rng_genetico
+    else:
+        rng_algoritmo = None
 
     simulacion = Simulacion(
         mapa,
         agentes,
         algoritmo,
-        rng=rng_movimientos
+        rng=rng_movimientos,
+        rng_algoritmo=rng_algoritmo
     )
 
     return simulacion.ejecutar()
 
 
-for prueba in ESCENARIOS_PRUEBA:
+def main():
+    print("====================================")
+    print("       ESCAPE DE LA TORRE")
+    print("====================================")
 
-    escenario = prueba["escenario"]
-    fuegos_extra = prueba["fuegos_extra"]
+    print("\nSeleccione un mapa:")
+    print("1. Alta densidad / Cuello de botella")
+    print("2. Densidad media / Laberinto corporativo")
+    print("3. Baja densidad / Dispersion abierta")
 
-    print("\n======================================")
-    print(escenario["nombre"])
-    print("4 focos iniciales")
-    print("======================================")
+    opcion_mapa = input("\nMapa: ")
 
-    for nombre, algoritmo in ALGORITMOS.items():
+    if opcion_mapa not in ESCENARIOS:
+        print("Opcion de mapa invalida.")
+        return
 
-        supervivencias = []
-        tiempos = []
+    print("\nSeleccione un algoritmo:")
+    print("1. BFS")
+    print("2. UCS")
+    print("3. Greedy")
+    print("4. A*")
+    print("5. Genetico")
 
-        for semilla in range(ITERACIONES):
+    opcion_algoritmo = input("\nAlgoritmo: ")
 
-            resultado = ejecutar_simulacion(
-                escenario,
-                algoritmo,
-                semilla,
-                fuegos_extra
-            )
+    if opcion_algoritmo not in ALGORITMOS:
+        print("Opcion de algoritmo invalida.")
+        return
 
-            supervivencia = (
-                resultado["evacuados"]
-                / resultado["agentes_totales"]
-                * 100
-            )
+    entrada_semilla = input(
+        "\nSemilla (Enter para usar 0): "
+    )
 
-            supervivencias.append(
-                supervivencia
-            )
+    if entrada_semilla == "":
+        semilla = 0
+    else:
+        semilla = int(entrada_semilla)
 
-            if resultado["turno_ultimo_evacuado"] is not None:
-                tiempos.append(
-                    resultado["turno_ultimo_evacuado"]
-                )
+    escenario = ESCENARIOS[
+        opcion_mapa
+    ]
 
-        print(
-            f"{nombre}: "
-            f"supervivencia={statistics.mean(supervivencias):.1f}% | "
-            f"min={min(supervivencias):.1f}% | "
-            f"max={max(supervivencias):.1f}% | "
-            f"tiempo={statistics.mean(tiempos):.1f}"
-        )
+    nombre_algoritmo, algoritmo = (
+        ALGORITMOS[opcion_algoritmo]
+    )
+
+    print("\nEjecutando simulacion...")
+    print(
+        f"Mapa: {escenario['nombre']}"
+    )
+    print(
+        f"Algoritmo: {nombre_algoritmo}"
+    )
+    print(
+        f"Agentes: "
+        f"{escenario['cantidad_agentes']}"
+    )
+    print(
+        f"Semilla: {semilla}"
+    )
+
+    resultado = ejecutar_simulacion(
+        escenario,
+        algoritmo,
+        semilla
+    )
+
+    total = resultado[
+        "agentes_totales"
+    ]
+
+    evacuados = resultado[
+        "evacuados"
+    ]
+
+    muertos = resultado[
+        "muertos"
+    ]
+
+    atrapados = (
+        total
+        - evacuados
+        - muertos
+    )
+
+    supervivencia = (
+        evacuados
+        / total
+        * 100
+    )
+
+    print("\n====================================")
+    print("             RESULTADOS")
+    print("====================================")
+
+    print(
+        f"Agentes totales: {total}"
+    )
+
+    print(
+        f"Evacuados: {evacuados}"
+    )
+
+    print(
+        f"Fallecidos: {muertos}"
+    )
+
+    print(
+        f"Atrapados: {atrapados}"
+    )
+
+    print(
+        f"Supervivencia: "
+        f"{supervivencia:.2f}%"
+    )
+
+    print(
+        f"Turnos de simulacion: "
+        f"{resultado['turnos_simulacion']}"
+    )
+
+    print(
+        f"Ultimo evacuado: "
+        f"{resultado['turno_ultimo_evacuado']}"
+    )
+
+
+if __name__ == "__main__":
+    main()
