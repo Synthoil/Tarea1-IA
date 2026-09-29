@@ -1,15 +1,19 @@
 import random
+import statistics
 
 from mapa import Mapa
 from agente import Agente
 from simulacion import Simulacion
 
-from escenarios import MAPA_1
+from escenarios import MAPA_1, MAPA_2, MAPA_3
 
 from algoritmos.bfs import bfs
 from algoritmos.ucs import ucs
 from algoritmos.greedy import greedy
 from algoritmos.astar import astar
+
+
+ITERACIONES = 20
 
 
 ALGORITMOS = {
@@ -20,9 +24,31 @@ ALGORITMOS = {
 }
 
 
-CUELLOS_BOTELLA = [
-    (10, 11),
-    (12, 11)
+ESCENARIOS_PRUEBA = [
+    {
+        "escenario": MAPA_1,
+        "fuegos_extra": [
+            (9, 25),
+            (13, 5),
+            (18, 25)
+        ]
+    },
+    {
+        "escenario": MAPA_2,
+        "fuegos_extra": [
+            (3, 25),
+            (9, 2),
+            (18, 25)
+        ]
+    },
+    {
+        "escenario": MAPA_3,
+        "fuegos_extra": [
+            (3, 25),
+            (10, 2),
+            (18, 25)
+        ]
+    }
 ]
 
 
@@ -33,64 +59,100 @@ def crear_agentes(posiciones):
     ]
 
 
-for nombre, algoritmo in ALGORITMOS.items():
+def agregar_fuegos(grilla, posiciones):
+    nueva_grilla = [
+        list(fila)
+        for fila in grilla
+    ]
 
-    print("\n======================================")
-    print(nombre)
-    print("======================================")
+    for fila, columna in posiciones:
+        if nueva_grilla[fila][columna] == ".":
+            nueva_grilla[fila][columna] = "F"
 
-    random.seed(42)
+    return [
+        "".join(fila)
+        for fila in nueva_grilla
+    ]
 
-    mapa = Mapa(MAPA_1["grilla"])
-    agentes = crear_agentes(MAPA_1["agentes"])
+
+def ejecutar_simulacion(
+    escenario,
+    algoritmo,
+    semilla,
+    fuegos_extra
+):
+    rng_fuego = random.Random(semilla)
+    rng_movimientos = random.Random(
+        semilla + 100000
+    )
+
+    grilla = agregar_fuegos(
+        escenario["grilla"],
+        fuegos_extra
+    )
+
+    mapa = Mapa(
+        grilla,
+        rng=rng_fuego
+    )
+
+    agentes = crear_agentes(
+        escenario["agentes"]
+    )
 
     simulacion = Simulacion(
         mapa,
         agentes,
-        algoritmo
+        algoritmo,
+        rng=rng_movimientos
     )
 
-    max_esperando = 0
-    max_ocupacion_cuello = 0
+    return simulacion.ejecutar()
 
-    while not simulacion.terminada():
 
-        simulacion.ejecutar_turno()
+for prueba in ESCENARIOS_PRUEBA:
 
-        ocupacion = simulacion.obtener_ocupacion()
+    escenario = prueba["escenario"]
+    fuegos_extra = prueba["fuegos_extra"]
 
-        esperando = sum(
-            1
-            for agente in simulacion.agentes_activos()
-            if agente.turnos_esperando > 0
-        )
+    print("\n======================================")
+    print(escenario["nombre"])
+    print("4 focos iniciales")
+    print("======================================")
 
-        ocupacion_cuello = sum(
-            ocupacion[posicion]
-            for posicion in CUELLOS_BOTELLA
-        )
+    for nombre, algoritmo in ALGORITMOS.items():
 
-        max_esperando = max(
-            max_esperando,
-            esperando
-        )
+        supervivencias = []
+        tiempos = []
 
-        max_ocupacion_cuello = max(
-            max_ocupacion_cuello,
-            ocupacion_cuello
-        )
+        for semilla in range(ITERACIONES):
+
+            resultado = ejecutar_simulacion(
+                escenario,
+                algoritmo,
+                semilla,
+                fuegos_extra
+            )
+
+            supervivencia = (
+                resultado["evacuados"]
+                / resultado["agentes_totales"]
+                * 100
+            )
+
+            supervivencias.append(
+                supervivencia
+            )
+
+            if resultado["turno_ultimo_evacuado"] is not None:
+                tiempos.append(
+                    resultado["turno_ultimo_evacuado"]
+                )
 
         print(
-            f"Turno {simulacion.turno:2d} | "
-            f"Cuello 1: {ocupacion[(10, 11)]} | "
-            f"Cuello 2: {ocupacion[(12, 11)]} | "
-            f"Esperando: {esperando:2d} | "
-            f"Activos: {len(simulacion.agentes_activos()):2d}"
+            f"{nombre}: "
+            f"supervivencia={statistics.mean(supervivencias):.1f}% | "
+            f"min={min(supervivencias):.1f}% | "
+            f"max={max(supervivencias):.1f}% | "
+            f"tiempo={statistics.mean(tiempos):.1f}"
         )
-
-    print("\nResumen:")
-    print(f"Evacuados: {simulacion.evacuados}")
-    print(f"Muertos: {simulacion.muertos}")
-    print(f"Máximo de agentes esperando: {max_esperando}")
-    print(f"Máxima ocupación total en cuellos: {max_ocupacion_cuello}")
-    print(f"Último evacuado: {simulacion.turno_ultimo_evacuado}")

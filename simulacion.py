@@ -11,13 +11,14 @@ from config import (
 
 class Simulacion:
     
-    def __init__(self, mapa, agentes, planificador=None, rng=None):
+    def __init__(self, mapa, agentes, planificador=None, rng=None, rng_algoritmo=None):
         self.mapa = mapa
         self.agentes = agentes
         
         self.planificador = planificador
         
         self.rng = rng if rng is not None else random
+        self.rng_algoritmo = rng_algoritmo
         
         self.turno = 0
         
@@ -64,12 +65,21 @@ class Simulacion:
         
         ocupacion = self.obtener_ocupacion()
         
-        nueva_ruta =self.planificador(
-            self.mapa,
-            agente.posicion,
-            self.mapa.salida,
-            ocupacion
-        )
+        if self.rng_algoritmo is not None:
+            nueva_ruta =self.planificador(
+                self.mapa,
+                agente.posicion,
+                self.mapa.salida,
+                ocupacion,
+                rng=self.rng_algoritmo
+            )
+        else:
+            nueva_ruta = self.planificador(
+                self.mapa,
+                agente.posicion,
+                self.mapa.salida,
+                ocupacion
+            )
         
         if nueva_ruta is not None:
             agente.asignar_ruta(nueva_ruta)

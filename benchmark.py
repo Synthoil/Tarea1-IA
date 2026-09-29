@@ -11,15 +11,18 @@ from algoritmos.bfs import bfs
 from algoritmos.ucs import ucs
 from algoritmos.greedy import greedy
 from algoritmos.astar import astar 
+from algoritmos.genetico import genetico
 
-ITERACIONES = 200 
+ITERACIONES = 120   
 
 ALGORITMOS = {
     "BFS": bfs,
     "UCS": ucs,
     "Greedy": greedy,
-    "A*": astar
+    "A*": astar,
+    "Genetico": genetico
 }
+
 
 def crear_agentes(posiciones):
     return [
@@ -27,18 +30,92 @@ def crear_agentes(posiciones):
         for i, posicion in enumerate(posiciones)
     ]
     
+    
+def generar_posiciones_agentes(escenario, rng_posiciones):
+    grilla = escenario["grilla"]
+    zona = escenario["zona_inicio"]
 
-def ejecutar_simulacion(escenario, algoritmo, semilla):
+    posiciones_validas = []
 
-    rng_fuego = random.Random(semilla)
-    rng_movimientos = random.Random(semilla + 100000)
+    for fila in range(
+        zona["fila_min"],
+        zona["fila_max"] + 1
+    ):
+        for columna in range(
+            zona["columna_min"],
+            zona["columna_max"] + 1
+        ):
 
-    mapa = Mapa(escenario["grilla"], rng=rng_fuego)
+            if grilla[fila][columna] == ".":
+                posiciones_validas.append(
+                    (fila, columna)
+                )
 
-    agentes = crear_agentes(escenario["agentes"])
-    simulacion = Simulacion(mapa, agentes, algoritmo, rng=rng_movimientos)
+    cantidad = escenario["cantidad_agentes"]
 
-    return simulacion.ejecutar()
+    if len(posiciones_validas) < cantidad:
+        raise ValueError(
+            "No hay suficientes posiciones validas "
+            "para crear los agentes."
+        )
+
+    return rng_posiciones.sample(
+        posiciones_validas,
+        cantidad
+    )
+    
+
+def ejecutar_simulacion(
+    escenario,
+    algoritmo,
+    semilla
+):
+    rng_fuego = random.Random(
+        semilla
+    )
+
+    rng_posiciones = random.Random(
+        semilla + 50000
+    )
+
+    rng_movimientos = random.Random(
+        semilla + 100000
+    )
+    
+    rng_genetico = random.Random(
+        semilla + 150000
+    )
+
+    mapa = Mapa(
+        escenario["grilla"],
+        rng=rng_fuego
+    )
+
+    posiciones = generar_posiciones_agentes(
+        escenario,
+        rng_posiciones
+    )
+
+    agentes = crear_agentes(
+        posiciones
+    )
+    
+    if algoritmo is genetico:
+        rng_algoritmo = rng_genetico
+    else:
+        rng_algoritmo = None
+
+    simulacion = Simulacion(
+        mapa,
+        agentes,
+        algoritmo,
+        rng=rng_movimientos,
+        rng_algoritmo=rng_algoritmo
+    )
+
+    resultado = simulacion.ejecutar()
+
+    return resultado
 
 
 def calcular_metricas(resultados):
@@ -48,6 +125,8 @@ def calcular_metricas(resultados):
     total_evacuados = 0
     total_muertos = 0
     total_atrapados = 0
+    
+    corridas_sin_sobrevivientes = 0
     
     for resultado in resultados:
         total = resultado["agentes_totales"]
@@ -70,6 +149,8 @@ def calcular_metricas(resultados):
         
         if tiempo is not None:
             tiempos.append(tiempo)
+        else:
+            corridas_sin_sobrevivientes += 1
             
     metricas = {
         "supervivencia_media": statistics.mean(supervivencias),
@@ -79,6 +160,9 @@ def calcular_metricas(resultados):
         "evacuados_totales": total_evacuados,
         "muertos_totales": total_muertos,
         "atrapados_totales": total_atrapados,
+        
+        "corridas_sin_sobrevivientes":
+            corridas_sin_sobrevivientes
     }
     
     if tiempos:
@@ -113,6 +197,7 @@ def ejecutar_benchmark():
             
             resultados = []
             
+            
             for semilla in range(ITERACIONES):
                 
                 resultado = ejecutar_simulacion(
@@ -123,7 +208,9 @@ def ejecutar_benchmark():
                 
                 resultados.append(resultado)
                 
+                
             metricas = calcular_metricas(resultados)
+    
             
             print(f"\n{nombre_algoritmo}")
             print(
@@ -149,6 +236,11 @@ def ejecutar_benchmark():
                     f"Tiempo min/max: "
                     f"{metricas['tiempo_min']} / "
                     f"{metricas['tiempo_max']}"
+                )
+                
+                print(
+                    f"Corridas sin sobrevivientes: "
+                    f"{metricas['corridas_sin_sobrevivientes']}"
                 )
 
             resumen.append({
@@ -184,7 +276,10 @@ def ejecutar_benchmark():
                     metricas["muertos_totales"],
 
                 "atrapados_totales":
-                    metricas["atrapados_totales"]
+                    metricas["atrapados_totales"],
+                
+                "corridas_sin_sobrevivientes":
+                    metricas["corridas_sin_sobrevivientes"],
             })
     
     return resumen
@@ -206,7 +301,8 @@ def guardar_csv(resultados):
         "tiempo_max",
         "evacuados_totales",
         "muertos_totales",
-        "atrapados_totales"
+        "atrapados_totales",
+        "corridas_sin_sobrevivientes"
     ]
 
     with open(
